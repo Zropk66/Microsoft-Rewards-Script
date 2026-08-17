@@ -28,6 +28,8 @@ import HttpClient from './util/Http'
 import { sendDiscord, flushDiscordQueue } from './logging/Discord'
 import { sendNtfy, flushNtfyQueue } from './logging/Ntfy'
 import { sendTelegram, flushTelegramQueue } from './logging/Telegram'
+import { sendBark, flushBarkQueue } from './logging/Bark'
+import { sendPushPlus, flushPushPlusQueue } from './logging/PushPlus'
 import type { DashboardData } from './interface/DashboardData'
 import type { AppDashboardData } from './interface/AppDashBoardData'
 import type { AppEarnablePoints } from './interface/Points'
@@ -69,7 +71,13 @@ export function getCurrentContext(): ExecutionContext {
 }
 
 async function flushAllWebhooks(timeoutMs = 5000): Promise<void> {
-    await Promise.allSettled([flushDiscordQueue(timeoutMs), flushNtfyQueue(timeoutMs), flushTelegramQueue(timeoutMs)])
+    await Promise.allSettled([
+        flushDiscordQueue(timeoutMs),
+        flushNtfyQueue(timeoutMs),
+        flushTelegramQueue(timeoutMs),
+        flushBarkQueue(timeoutMs),
+        flushPushPlusQueue(timeoutMs)
+    ])
     closeSessionStore()
 }
 
@@ -319,6 +327,12 @@ export class MicrosoftRewardsBot {
                     }
                     if (webhook.telegram?.enabled && webhook.telegram.botToken && webhook.telegram.chatId) {
                         sendTelegram(webhook.telegram, content, level)
+                    }
+                    if (webhook.bark?.enabled && webhook.bark.key) {
+                        sendBark(webhook.bark, content, level)
+                    }
+                    if (webhook.pushplus?.enabled && webhook.pushplus.token) {
+                        sendPushPlus(webhook.pushplus, content)
                     }
                 }
             })

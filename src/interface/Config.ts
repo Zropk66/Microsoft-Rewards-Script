@@ -20,7 +20,7 @@ export interface Config {
     webhook: ConfigWebhook
 }
 
-export type QueryEngine = 'google' | 'wikipedia' | 'wikirandom' | 'hackernews' | 'reddit' | 'local'
+export type QueryEngine = 'google' | 'wikipedia' | 'wikirandom' | 'hackernews' | 'reddit' | 'local' | 'china'
 
 export type RssFeedSelector = 'rss' | `rss.${string}`
 export type QueryEngineEntry = QueryEngine | RssFeedSelector
@@ -36,6 +36,9 @@ export interface ConfigSearchSettings {
     searchResultVisitTime: number | string
     searchDelay: ConfigDelay
     readDelay: ConfigDelay
+    chinaApi?: {
+        appkey?: string
+    }
 }
 
 export interface ConfigDelay {
@@ -79,6 +82,8 @@ export interface ConfigWebhook {
     discord?: WebhookDiscordConfig
     ntfy?: WebhookNtfyConfig
     telegram?: WebhookTelegramConfig
+    bark?: WebhookBarkConfig
+    pushplus?: WebhookPushPlusConfig
     webhookLogFilter: LogFilter
 }
 
@@ -109,4 +114,24 @@ export interface WebhookTelegramConfig {
     enabled?: boolean
     botToken: string
     chatId: string | number
+}
+
+export interface WebhookBarkConfig {
+    enabled?: boolean
+    serverUrl?: string
+    key?: string
+    title?: string
+    group?: string
+    icon?: string
+    sound?: string
+    level?: 'active' | 'timeSensitive' | 'passive'
+    badge?: number
+}
+
+export interface WebhookPushPlusConfig {
+    enabled?: boolean
+    token: string
+    title?: string
+    template?: 'txt' | 'html' | 'markdown'
+    channel?: string
 }

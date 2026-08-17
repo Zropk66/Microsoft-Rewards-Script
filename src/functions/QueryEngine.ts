@@ -63,6 +63,42 @@ export function normalizeQueryKey(query: string): string {
 export class QueryCore {
     constructor(private bot: MicrosoftRewardsBot) {}
 
+    async getChinaTrends(): Promise<string[]> {
+        const sources = ['BaiduHot', 'TouTiaoHot', 'WeiBoHot', 'DouYinHot', 'ZhiHuHot']
+        const appkey = this.bot.config.searchSettings.chinaApi?.appkey?.trim() ?? ''
+        const titles = new Set<string>()
+
+        for (const source of sources) {
+            try {
+                const url = appkey
+                    ? `https://api.gmya.net/Api/${source}?appkey=${encodeURIComponent(appkey)}`
+                    : `https://api.gmya.net/Api/${source}`
+
+                const response = await this.bot.http.request<{
+                    data?: Array<{ title?: string }>
+                }>(
+                    {
+                        url,
+                        method: 'GET',
+                        headers: { 'Accept-Encoding': 'gzip, deflate' },
+                        timeout: 6000
+                    },
+                    this.bot.config.proxy.queryEngine
+                )
+
+                if (response?.data && Array.isArray(response.data.data)) {
+                    response.data.data.forEach(item => {
+                        if (item?.title) titles.add(String(item.title).trim())
+                    })
+                    if (titles.size > 0) break
+                }
+            } catch {
+                // Try next source on failure
+            }
+        }
+        return Array.from(titles)
+    }
+
     async queryManager(options: QueryManagerOptions = {}): Promise<string[]> {
         const {
             shuffle = false,
@@ -70,6 +106,15 @@ export class QueryCore {
             langCode = 'en',
             geoLocale = 'US'
         } = options
+
+        const isChina = geoLocale.toUpperCase() === 'CN' || langCode.toLowerCase().startsWith('zh')
+        if (isChina && !options.sourceOrder) {
+            const chinaTrends = await this.getChinaTrends()
+            const localQueries = this.getLocalQueryList()
+            const combined = [...chinaTrends, ...localQueries]
+            if (shuffle) this.bot.utils.shuffleArray(combined)
+            return [...new Set(combined)]
+        }
 
         try {
             this.bot.logger.debug(
@@ -79,6 +124,7 @@ export class QueryCore {
             )
 
             const sourceHandlers: Record<QueryEngine, () => Promise<string[]> | string[]> = {
+                china: () => this.getChinaTrends().catch(() => []),
                 google: () => this.getGoogleTrends(geoLocale.toUpperCase()).catch(() => []),
                 wikipedia: () => this.getWikipediaTrending(langCode).catch(() => []),
                 wikirandom: () => this.getWikipediaRandom(langCode).catch(() => []),

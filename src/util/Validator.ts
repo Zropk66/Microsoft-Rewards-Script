@@ -44,7 +44,7 @@ const DelaySchema = z
     })
 
 const QueryEngineSchema = z.union([
-    z.enum(['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local']),
+    z.enum(['google', 'wikipedia', 'wikirandom', 'hackernews', 'reddit', 'local', 'china']),
     z
         .string()
         .regex(/^rss(\.[A-Za-z0-9_-]+){0,2}$/, 'Invalid rss selector (use rss, rss.<site>, or rss.<site>.<endpoint>)')
@@ -95,7 +95,29 @@ const WebhookSchema = z.object({
         .object({
             enabled: z.boolean().optional(),
             botToken: z.string(),
-            chatId: z.string()
+            chatId: z.union([z.string(), z.number()])
+        })
+        .optional(),
+    bark: z
+        .object({
+            enabled: z.boolean().optional(),
+            serverUrl: z.string().optional(),
+            key: z.string().optional(),
+            title: z.string().optional(),
+            group: z.string().optional(),
+            icon: z.string().optional(),
+            sound: z.string().optional(),
+            level: z.enum(['active', 'timeSensitive', 'passive']).optional(),
+            badge: z.number().int().nonnegative().optional()
+        })
+        .optional(),
+    pushplus: z
+        .object({
+            enabled: z.boolean().optional(),
+            token: z.string(),
+            title: z.string().optional(),
+            template: z.enum(['txt', 'html', 'markdown']).optional(),
+            channel: z.string().optional()
         })
         .optional(),
     webhookLogFilter: LogFilterSchema
@@ -143,7 +165,12 @@ export const ConfigSchema = z.object({
         queryEngines: z.array(QueryEngineSchema),
         searchResultVisitTime: NumberOrString,
         searchDelay: DelaySchema,
-        readDelay: DelaySchema
+        readDelay: DelaySchema,
+        chinaApi: z
+            .object({
+                appkey: z.string().optional()
+            })
+            .optional()
     }),
     experimental: z
         .object({

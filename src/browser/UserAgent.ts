@@ -157,8 +157,12 @@ export class UserAgentManager {
 
     async getChromeVersion(isMobile: boolean): Promise<string> {
         try {
+            const geoLocale = (this.bot.userData?.geoLocale ?? 'US').toUpperCase()
+            const langCode = (this.bot.userData?.langCode ?? 'en').toLowerCase()
+            const isCN = geoLocale === 'CN' || langCode.startsWith('zh')
+
             const request = {
-                url: URLs.userAgent.chromeVersions,
+                url: URLs.userAgent.chromeVersions(isCN),
                 method: 'GET',
                 timeout: UserAgentManager.VERSION_LOOKUP_TIMEOUT_MS,
                 headers: {

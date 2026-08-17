@@ -330,11 +330,19 @@ async function runPlatform({ account, config, dbPath, platform, fresh }) {
     process.once('SIGINT', onSigInt)
     process.once('SIGTERM', onSigTerm)
 
+    const isCN = (account.geoLocale || '').toUpperCase() === 'CN'
+
     try {
         const injected = await newInjectedContext(browser, {
             fingerprint,
             newContextOptions: {
                 permissions: [],
+                ...(isCN && !proxy
+                    ? {
+                          locale: 'zh-CN',
+                          timezoneId: 'Asia/Shanghai'
+                      }
+                    : {}),
                 ignoreHTTPSErrors: ignoreCertificateErrors,
                 ...(stored.storageState ? { storageState: stored.storageState } : {}),
                 ...(isMobile

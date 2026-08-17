@@ -88,6 +88,22 @@ export const ENV_OVERRIDES: EnvOverrideEntry[] = [
     { env: 'CONFIG_NTFY_PRIORITY', path: 'webhook.ntfy.priority', type: 'number' },
     { env: 'CONFIG_NTFY_TAGS', path: 'webhook.ntfy.tags', type: 'array' },
 
+    // Bark webhook
+    { env: 'CONFIG_BARK_ENABLED', path: 'webhook.bark.enabled', type: 'bool' },
+    { env: 'CONFIG_BARK_SERVER_URL', path: 'webhook.bark.serverUrl', type: 'string' },
+    { env: 'CONFIG_BARK_KEY', path: 'webhook.bark.key', type: 'string' },
+    { env: 'CONFIG_BARK_TITLE', path: 'webhook.bark.title', type: 'string' },
+    { env: 'CONFIG_BARK_GROUP', path: 'webhook.bark.group', type: 'string' },
+    { env: 'CONFIG_BARK_SOUND', path: 'webhook.bark.sound', type: 'string' },
+    { env: 'CONFIG_BARK_ICON', path: 'webhook.bark.icon', type: 'string' },
+
+    // PushPlus webhook
+    { env: 'CONFIG_PUSHPLUS_ENABLED', path: 'webhook.pushplus.enabled', type: 'bool' },
+    { env: 'CONFIG_PUSHPLUS_TOKEN', path: 'webhook.pushplus.token', type: 'string' },
+    { env: 'CONFIG_PUSHPLUS_TITLE', path: 'webhook.pushplus.title', type: 'string' },
+    { env: 'CONFIG_PUSHPLUS_TEMPLATE', path: 'webhook.pushplus.template', type: 'string' },
+    { env: 'CONFIG_PUSHPLUS_CHANNEL', path: 'webhook.pushplus.channel', type: 'string' },
+
     // Webhook log filter
     { env: 'CONFIG_WEBHOOK_LOG_FILTER_ENABLED', path: 'webhook.webhookLogFilter.enabled', type: 'bool' },
     { env: 'CONFIG_WEBHOOK_LOG_FILTER_MODE', path: 'webhook.webhookLogFilter.mode', type: 'string' },

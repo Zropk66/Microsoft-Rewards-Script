@@ -1,9 +1,8 @@
 services:
     microsoft-rewards-script:
-        image: ghcr.io/thenetsky/microsoft-rewards-script:4
-        # To build locally instead of pulling the prebuilt image, use the build section below.
-        #build:
-        #    context: .
+        build:
+            context: .
+        image: microsoft-rewards-script:local
         container_name: microsoft-rewards-script
         restart: unless-stopped
         volumes:
@@ -14,7 +13,7 @@ services:
             - path: .env
         environment:
             # ── Scheduler ──────────────────────────────────────
-            TZ: 'America/Toronto'
+            TZ: 'Asia/Shanghai'
             NODE_ENV: 'production'
             # CRON_SCHEDULE is the *initial* default. It will run as default unless changed by the API
             # API schedule changes are saved to ./config/schedule.json, delete

@@ -39,6 +39,7 @@
         "parallelSearching": true,
         "clusterSearch": true,
         "queryEngines": [
+            "china",
             "google",
             "wikipedia",
             "wikirandom",
@@ -59,6 +60,9 @@
         "readDelay": {
             "min": "30sec",
             "max": "1min"
+        },
+        "chinaApi": {
+            "appkey": ""
         }
     },
     "experimental": {
@@ -97,6 +101,22 @@
             "title": "Microsoft-Rewards-Script",
             "tags": ["bot", "notify"],
             "priority": 3
+        },
+        "bark": {
+            "enabled": false,
+            "serverUrl": "https://api.day.app",
+            "key": "",
+            "title": "Microsoft-Rewards-Script",
+            "group": "MicrosoftRewards",
+            "sound": "",
+            "icon": ""
+        },
+        "pushplus": {
+            "enabled": false,
+            "token": "",
+            "title": "Microsoft-Rewards-Script",
+            "template": "txt",
+            "channel": ""
         },
         "webhookLogFilter": {
             "enabled": false,

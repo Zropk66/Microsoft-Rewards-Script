@@ -1,8 +1,12 @@
 import chalk from 'chalk'
 import cluster from 'cluster'
+import * as fs from 'fs'
+import path from 'path'
 import { sendDiscord } from './Discord'
 import { sendNtfy } from './Ntfy'
 import { sendTelegram } from './Telegram'
+import { sendBark } from './Bark'
+import { sendPushPlus } from './PushPlus'
 import type { MicrosoftRewardsBot } from '../index'
 import { errorDiagnostic } from '../util/ErrorDiagnostic'
 import type { LogFilter } from '../interface/Config'
@@ -16,6 +20,20 @@ export interface IpcLog {
 }
 
 type ChalkFn = (msg: string) => string
+
+const LOG_DIR = path.join(process.cwd(), 'logs')
+const LOG_FILE = path.join(LOG_DIR, 'app.log')
+
+function writeToFileLog(cleanMsg: string): void {
+    try {
+        if (!fs.existsSync(LOG_DIR)) {
+            fs.mkdirSync(LOG_DIR, { recursive: true })
+        }
+        fs.appendFileSync(LOG_FILE, cleanMsg + '\n', 'utf-8')
+    } catch {
+        // Ignore file write errors
+    }
+}
 
 function platformText(platform: Platform): string {
     return platform === 'main' ? 'MAIN' : platform ? 'MOBILE' : 'DESKTOP'
@@ -89,6 +107,8 @@ export class Logger {
         const levelTag = level.toUpperCase()
         const cleanMsg = `[${now}] [${userName}] [${levelTag}] ${platformText(isMobile)} [${title}] ${formatted}`
 
+        writeToFileLog(cleanMsg)
+
         if (level === 'error' && config.errorDiagnostics) {
             const page = this.bot.isMobile ? this.bot.mainMobilePage : this.bot.mainDesktopPage
             const error = message instanceof Error ? message : new Error(String(message))
@@ -106,7 +126,9 @@ export class Logger {
                 else if (level === 'debug') logColor = 'magenta'
             }
 
-            const consoleStr = `[${now}] [${userName}] [${levelTag}] ${platformBadge(isMobile)} [${title}] ${formatted}`
+            const firstLineFormatted = formatted.split('\n')[0] ?? formatted
+            const consoleFormatted = formatted.includes('\n') ? `${firstLineFormatted} (see logs/app.log)` : formatted
+            const consoleStr = `[${now}] [${userName}] [${levelTag}] ${platformBadge(isMobile)} [${title}] ${consoleFormatted}`
             consoleOut(level, consoleStr, getColorFn(logColor))
         }
 
@@ -115,7 +137,9 @@ export class Logger {
         const hasWebhook = Boolean(
             (config.webhook.discord?.enabled && config.webhook.discord.url) ||
             (config.webhook.ntfy?.enabled && config.webhook.ntfy.url) ||
-            (config.webhook.telegram?.enabled && config.webhook.telegram.botToken && config.webhook.telegram.chatId)
+            (config.webhook.telegram?.enabled && config.webhook.telegram.botToken && config.webhook.telegram.chatId) ||
+            (config.webhook.bark?.enabled && config.webhook.bark.key) ||
+            (config.webhook.pushplus?.enabled && config.webhook.pushplus.token)
         )
         if (!hasWebhook) return
 
@@ -132,6 +156,14 @@ export class Logger {
                 config.webhook.telegram.chatId
             ) {
                 sendTelegram(config.webhook.telegram, cleanMsg, level)
+            }
+
+            if (config.webhook.bark?.enabled && config.webhook.bark.key) {
+                sendBark(config.webhook.bark, cleanMsg, level)
+            }
+
+            if (config.webhook.pushplus?.enabled && config.webhook.pushplus.token) {
+                sendPushPlus(config.webhook.pushplus, cleanMsg)
             }
         } else {
             process.send?.({ __ipcLog: { content: cleanMsg, level } })
