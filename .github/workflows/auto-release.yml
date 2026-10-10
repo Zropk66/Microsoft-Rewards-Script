@@ -2,10 +2,17 @@ name: Release and Docker Push
 
 on:
     push:
-        branches: ['v3', 'v4']
-        paths:
-            - package.json
+        tags:
+            - 'v*'
+        branches:
+            - 'v4'
     workflow_dispatch:
+        inputs:
+            force:
+                description: 'Force build and push even if image tag exists'
+                required: false
+                type: boolean
+                default: false
 
 permissions:
     contents: write
@@ -31,13 +38,20 @@ jobs:
                   echo "name=$IMG" >> "$GITHUB_OUTPUT"
                   echo "LOG: Image: ${{ env.REGISTRY }}/$IMG"
 
-            - name: Read current version
+            - name: Read version and tag
               id: version
               run: |
                   set -euo pipefail
-                  CUR_VERSION="$(node -p "require('./package.json').version")"
-                  echo "current=$CUR_VERSION" >> "$GITHUB_OUTPUT"
-                  echo "LOG: Current version: $CUR_VERSION"
+                  if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+                      TAG_NAME="${GITHUB_REF_NAME}"
+                      VER="${TAG_NAME#v}"
+                  else
+                      VER="$(node -p "require('./package.json').version")"
+                      TAG_NAME="v${VER}"
+                  fi
+                  echo "version=$VER" >> "$GITHUB_OUTPUT"
+                  echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+                  echo "LOG: Version: $VER, Tag: $TAG_NAME"
 
             - name: Check if GitHub Release already exists
               id: relcheck
@@ -45,29 +59,29 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
-                  TAG="v${{ steps.version.outputs.current }}"
+                  TAG="${{ steps.version.outputs.tag }}"
                   echo "LOG: Checking GitHub Release for tag: $TAG"
 
                   set +e
-                  gh api "repos/${{ github.repository }}/releases/tags/$TAG" >/dev/null 2>&1
+                  gh release view "$TAG" >/dev/null 2>&1
                   CODE=$?
                   set -e
 
                   if [ "$CODE" -eq 0 ]; then
-                    echo "LOG: Release exists for $TAG"
-                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                      echo "LOG: Release exists for $TAG"
+                      echo "exists=true" >> "$GITHUB_OUTPUT"
                   else
-                    echo "LOG: Release does not exist for $TAG"
-                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                      echo "LOG: Release does not exist for $TAG"
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: Create GitHub Release
               if: steps.relcheck.outputs.exists != 'true'
               uses: softprops/action-gh-release@v2
               with:
-                  tag_name: v${{ steps.version.outputs.current }}
+                  tag_name: ${{ steps.version.outputs.tag }}
                   target_commitish: ${{ github.sha }}
-                  name: v${{ steps.version.outputs.current }}
+                  name: ${{ steps.version.outputs.tag }}
                   generate_release_notes: true
 
             - name: Log in to GHCR
@@ -81,8 +95,14 @@ jobs:
               id: imgcheck
               run: |
                   set -euo pipefail
+                  if [ "${{ github.event.inputs.force }}" = "true" ] || [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+                      echo "LOG: Force push or tag push. Skipping existence check."
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
+
                   IMAGE="${{ env.REGISTRY }}/${{ steps.image.outputs.name }}"
-                  TAG="${{ steps.version.outputs.current }}"
+                  TAG="${{ steps.version.outputs.version }}"
                   REF="$IMAGE:$TAG"
 
                   echo "LOG: Checking image manifest: $REF"
@@ -93,17 +113,17 @@ jobs:
                   set -e
 
                   if [ "$CODE" -eq 0 ]; then
-                    echo "LOG: Image tag exists: $REF"
-                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                      echo "LOG: Image tag exists: $REF"
+                      echo "exists=true" >> "$GITHUB_OUTPUT"
                   else
-                    echo "LOG: Image tag does not exist: $REF"
-                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                      echo "LOG: Image tag does not exist: $REF"
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: Stop if Docker image already exists
               if: steps.imgcheck.outputs.exists == 'true'
               run: |
-                  echo "LOG: Docker image already exists for version ${{ steps.version.outputs.current }}. Nothing to do."
+                  echo "LOG: Docker image already exists for version ${{ steps.version.outputs.version }}. Nothing to do."
                   exit 0
 
             - name: Compute image tags
@@ -112,16 +132,11 @@ jobs:
               run: |
                   set -euo pipefail
                   IMAGE="${{ env.REGISTRY }}/${{ steps.image.outputs.name }}"
-                  VER="${{ steps.version.outputs.current }}"
+                  VER="${{ steps.version.outputs.version }}"
+                  TAG="${{ steps.version.outputs.tag }}"
                   MAJOR="${VER%%.*}"
 
-                  # Always tag the exact version and the moving major tag (e.g. :3.1.7 and :3)
-                  TAGS="$IMAGE:$VER"$'\n'"$IMAGE:$MAJOR"
-
-                  # Only the current line (v4) moves :latest
-                  if [ "${{ github.ref_name }}" = "v4" ]; then
-                    TAGS="$TAGS"$'\n'"$IMAGE:latest"
-                  fi
+                  TAGS="$IMAGE:$VER"$'\n'"$IMAGE:$TAG"$'\n'"$IMAGE:$MAJOR"$'\n'"$IMAGE:latest"
 
                   { echo "list<<EOF"; echo "$TAGS"; echo "EOF"; } >> "$GITHUB_OUTPUT"
                   echo "LOG: Tags:"
@@ -137,7 +152,7 @@ jobs:
 
             - name: Build and push Docker image
               if: steps.imgcheck.outputs.exists != 'true'
-              uses: docker/build-push-action@v5
+              uses: docker/build-push-action@v6
               with:
                   context: .
                   push: true
